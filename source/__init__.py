@@ -1,1 +1,1 @@
-from .edaInterface import EDAInterface
+from schematicWriter import Part, SchematicWriter

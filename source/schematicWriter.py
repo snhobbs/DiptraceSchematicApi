@@ -1,6 +1,5 @@
-#edaClasses.py
-from heodb import componentFactoryByPartNumber, printToScreen, sqlInterface, Component
-import os, re, string
+import re
+
 class EdaUserFields(object):
 	def __init__(self):
 		self.fieldIndex1 = '-1'
@@ -12,18 +11,12 @@ class EdaUserFields(object):
 		self.modelString = '""'
 		self.lockProperties = '"N"'
 
-class EdaModelBody(object):
-	def __init__(self):
 		self.datasheet = '""'
 		self.horzFlip = '"N"'
 		self.vertFlip = '"N"'
 		self.pageHiddenId = '0'
 		self.manufacturer = ""
 
-class EdaComponent(EdaUserFields, EdaModelBody):
-	def __init__(self):
-		EdaUserFields.__init__(self)
-		EdaModelBody.__init__(self)
 		self.showText = '0'#this is the reference designator, matches the number on the textlst in the gui
 		self.textAlign = '0'
 		self.allowParts = '"N"'
@@ -183,7 +176,7 @@ class HeaderSchematic(object):
 		return retStr
 
 class pages(object):
-	def __init__(self,sheetNum):
+	def __init__(self, sheetNum):
 		self.sheet = 0
 		self.zones = '"N"'
 		self.pageWidth = '891'
@@ -267,80 +260,70 @@ class SettingsSchematic(object):
 '''
 		return strSet
 
-class DipTraceSchematic(SettingsSchematic, HeaderSchematic, EdaComponent, sqlInterface):
-	def __init__(self, db, bomIn = None):
+class Part(object):
+    '''
+    Part information for writing to the schematic
+    '''
+    def __init__(self, libPath, page, group, posX, posY, ref_des, userField1, userField2,\
+            value, package_type, packageName, multiPart = 'N', allowParts = 'N',\
+            partName = None, partDescriptor = None, partString = None):
+
+		self.libPath = libPath
+		self.page = page
+		self.group = group
+
+		self.posX = posX
+		self.posY = posY
+
+        self.multiPart = multiPart
+		self.allowParts = allowParts
+		self.ref_des = ref_des
+		self.base_res_des = ref_des[0]
+
+		self.userField1 = userField1
+		self.userField2 = userField2
+
+		self.value = value
+		self.package_type = package_type
+		self.packageName = base_comp_name
+
+		self.partDescriptor = partDescriptor
+		self.partName = partName
+		self.partString = partString
+		
+class SchematicWriter(SettingsSchematic, HeaderSchematic, EdaUserFields):
+    '''
+    parts is an array of objects of type Part
+    '''
+    def __init__(self, parts):
 		SettingsSchematic.__init__(self)
 		HeaderSchematic.__init__(self)
 		EdaComponent.__init__(self)
-		self.db = db
-		sqlInterface.__init__(self, db)
-		self.bomIn = bomIn
-		self.pageCount = max([ent[2] for ent in bomIn])
+        self.parts = parts
 
 	def searchLib(self, libraryAsciiLocation):
 		'''
 		Search the library and make an array of the parts in it, return array
 		'''
 		parts = []
-		with open(libraryAsciiLocation, 'r') as f:
+		with open(libraryAsciiLocation, 'r', encoding=getEncoding(libraryAsciiLocation)) as f:
 			for line in f:
 				match = re.search("\(Part \"*\"", line)
 				if match is not None:
 					parts.append(line.strip().split('(Part ')[1].split('"')[1].upper())					
 		return parts
 
-	def checkBaseCompNames(self, libraryAsciiLocation):
-		outStr = ["The Following Part Numbers Do Not Have A Known Part In The Given Library:\n\n"]
-		success = True
-		libParts = self.searchLib(libraryAsciiLocation)
-		for bomComp in self.bomIn:
-			compObj = componentFactoryByPartNumber(self.db, bomComp[1] + '-00')
-			compObj.loadPart()
-			compObj.assignEDAComponent()
-			partStr = compObj.EDA.base_comp_name.value.strip().upper()
-			if( partStr not in libParts):
-				outStr.append('{}) {} -> {}\n'.format(bomComp[0],compObj.part_number_short, partStr))
-				success = False
-		outStr.append("\nEnd of List. Re-export library to update library information")
-		return [''.join(outStr), success]
-
-	def makeLibPath(self, libName):
-		return '"C:\HEO\MasterLibrary\{}"'.format(libName)
-
 	def writeSchematic(self, fileName):
 		with open(fileName, 'w') as f:
 			f.write(self.writeHeader())
 			f.write(self.writeComponentHeading())
 
-			for ent in self.bomIn:
-
-				compObj = componentFactoryByPartNumber(self.db, ent[1] + '-00')
-				compObj.loadPart()
-				partCount = int(compObj.ManuInfo.num_package.value)
-				
-				for i in range(1, partCount + 1):
-					if partCount > 1:
-						self.allowParts = '"Y"'
-					else:
-						self.allowParts = '"N"'
-					compObj.assignEDAComponent()
-					self.ref_des = ent[0]
-					self.page = ent[2]
-					self.group = ent[3]
-					self.base_res_des = self.ref_des[0]
-					self.posX = compObj.posX
-					self.posY = compObj.posY
-					self.internalPartNumber = compObj.part_number_short
-					self.libPath = self.makeLibPath(compObj.EDA.lib_path.value)
-					self.value = compObj.EDA.disp_text.value
-					self.package_type = compObj.ManuInfo.package_type.value
-					self.packageName = compObj.EDA.base_comp_name.value	
-					self.partDescriptor = i
-					self.partName = '"Part {}"'.format(i)
-					self.partString = "{}{}".format(compObj.EDA.base_comp_name.value, i)
-					f.write(self.writePart())
+            for count, part in enumerate(self.parts):
+				part.partDescriptor = count
+				part.partName = '"Part {}"'.format(count)
+				part.partString = "{}{}".format(part.base_comp_name, count)
+				f.write(self.writePart(part))
 			f.write(self.writeComponentEnd())
 			f.write(self.writeSettings())
-		printToScreen("Schematic Saved To %s"%(fileName))
-
+		print("Schematic Saved To %s"%(fileName))
 

@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-setup(name='ditrace_schem_gen',
+setup(name='diptrace',
 		version='0.0.0b1',
 		description='Diptrace Schematic Generator',
 		url='https://github.com/snhobbs/DiptraceSchematicApi',
@@ -7,9 +7,7 @@ setup(name='ditrace_schem_gen',
 		author_email='simon.hobbs@hobbs-eo.com',
 		license='BSD',
 		packages=find_packages(),
-		install_requires=[
-			'pyfiglet'
-		],
+		install_requires=[],
 		#test_suite='nose.collector',
 		#tests_require=['nose'],
 		#scripts=['bin/'],
