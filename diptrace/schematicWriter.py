@@ -1,4 +1,5 @@
 import re
+from cmdmenus import getEncoding
 
 class EdaUserFields(object):
     def __init__(self):
@@ -264,8 +265,10 @@ class Part(object):
     '''
     Part information for writing to the schematic
     '''
-    def __init__(self, libPath, page, group, posX, posY, ref_des, userField1, userField2,\
-            value, package_type, packageName, multiPart = 'N', allowParts = 'N',\
+    def __init__(self, libPath = None, page = None, group = None, posX = None, 
+            posY = None, ref_des = None, userField1 = None, userField2 = None,
+            value = None, package_type = None, packageName = None, 
+            multiPart = 'N', allowParts = 'N',
             partName = None, partDescriptor = None, partString = None):
 
         self.libPath = libPath
@@ -278,14 +281,17 @@ class Part(object):
         self.multiPart = multiPart
         self.allowParts = allowParts
         self.ref_des = ref_des
-        self.base_res_des = ref_des[0]
+        if ref_des is None:
+            self.base_res_des = None
+        else:
+            self.base_res_des = ref_des[0]
 
         self.userField1 = userField1
         self.userField2 = userField2
 
         self.value = value
         self.package_type = package_type
-        self.packageName = base_comp_name
+        self.packageName = packageName
 
         self.partDescriptor = partDescriptor
         self.partName = partName
@@ -298,7 +304,7 @@ class SchematicWriter(SettingsSchematic, HeaderSchematic, EdaUserFields):
     def __init__(self, parts):
         SettingsSchematic.__init__(self)
         HeaderSchematic.__init__(self)
-        EdaComponent.__init__(self)
+        #EdaComponent.__init__(self)
         self.parts = parts
 
     def searchLib(self, libraryAsciiLocation):
